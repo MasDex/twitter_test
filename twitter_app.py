@@ -3,6 +3,8 @@ from tweepy import OAuthHandler
 from tweepy import Stream
 from tweepy import API
 from tweepy import Cursor
+import pandas as pd
+import numpy as np
 
 import credentials
 
@@ -15,6 +17,9 @@ class TwitterClient():
         self.twitter_client = API(self.auth)
 
         self.twitter_user = twitter_user
+
+    def get_twitter_client_api(self):
+        return self.twitter_client
 
 
     def get_user_timeline_tweets(self, num_tweets):
@@ -88,15 +93,36 @@ class TwitterListener(StreamListener):
             return False
         print(status)
 
+
+class TwwetAnalyzer():
+    """
+    Functionality to analyze and categorize content from tweets.
+    """
+    def tweets_to_dataframe(self, tweets):
+
+        df = pd.DataFrame(data=[tweet.text for tweet in tweets], columns=['Tweets'])
+        df['id'] = np.array([tweet.id for tweet in tweets])
+        df['len'] = np.array([len(tweet.text) for tweet in tweets])
+        df['created'] = np.array([tweet.created_at for tweet in tweets])
+        df['source'] = np.array([tweet.source for tweet in tweets])
+        df['likes'] = np.array([tweet.favorite_count for tweet in tweets])
+        df['retweet'] = np.array([tweet.retweet_count for tweet in tweets])
+
+        return df
 if __name__ == "__main__":
-    hash_tag_list = ['Donald Trump']
-    fetched_tweets_filename = 'tweets.json'
+    #Set Pandas Options to see all Coloumns of a data frame
+    pd.set_option('display.max_rows', 500)
+    pd.set_option('display.max_columns', 500)
+    pd.set_option('display.width', 1000)
 
-    #twitter_streamer = TwitterStreamer()
-    #twitter_streamer.stream_tweets(fetched_tweets_filename,hash_tag_list)
+    tweet_analyzer = TwwetAnalyzer()
 
-    twitter_client = TwitterClient('baloise_ch')
-    print(twitter_client.get_user_timeline_tweets(5))
+    twitter_client = TwitterClient()
+    api = twitter_client.get_twitter_client_api()
 
+    tweets = api.user_timeline(screen_name="baloise_ch", count=20)
 
+    #print(dir(tweets[0]))
 
+    df = tweet_analyzer.tweets_to_dataframe(tweets)
+    print(df.head())
