@@ -47,8 +47,8 @@ class TwitterClient():
 class TwitterAuthenticator():
 
     def authenticate_twitter_app(self):
-        auth = OAuthHandler(os.environ['TWITTER_ACCESS_TOKEN'], os.environ['TWITTER_ACCESS_TOKEN_SECRET'])
-        auth.set_access_token(os.environ['TWITTER_API_KEY'], os.environ['TWITTER_API_KEY_SECRET'])
+        auth = OAuthHandler(os.environ['CONSUMER_KEY'], os.environ['CONSUMER_SECRET'])
+        auth.set_access_token(os.environ['API_TOKEN'], os.environ['API_TOKEN_SECRET'])
         return auth
 
 ####Twitter Streamer####
