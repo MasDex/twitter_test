@@ -7,6 +7,11 @@ import pandas as pd
 import numpy as np
 import os
 from matplotlib import pyplot as plt
+import re
+
+from pymongo import MongoClient
+
+from textblob import TextBlob
 
 #### Twitter Client #####
 
@@ -98,9 +103,22 @@ class TwwetAnalyzer():
     """
     Functionality to analyze and categorize content from tweets.
     """
+    def clean_tweet(self, tweet):
+        return ' '.join(re.sub("(@[A-Za-z0-9]+)|([^0-9A-Za-z \t])|(\w+:\/\/\S+)", " ", tweet).split())
+
+    def analyze_sentiment(self, tweet):
+        analysis = TextBlob(self.clean_tweet(tweet))
+
+        if analysis.sentiment.polarity > 0:
+            return 1
+        elif analysis.sentiment.polarity == 0:
+            return 0
+        elif analysis.sentiment.polarity > 0:
+            return -1
+
     def tweets_to_dataframe(self, tweets):
 
-        df = pd.DataFrame(data=[tweet.text for tweet in tweets], columns=['Tweets'])
+        df = pd.DataFrame(data=[tweet.text for tweet in tweets], columns=['tweets'])
         df['id'] = np.array([tweet.id for tweet in tweets])
         df['len'] = np.array([len(tweet.text) for tweet in tweets])
         df['created'] = np.array([tweet.created_at for tweet in tweets])
@@ -109,6 +127,21 @@ class TwwetAnalyzer():
         df['retweet'] = np.array([tweet.retweet_count for tweet in tweets])
 
         return df
+
+class Persistence():
+    def __init__(self):
+            self.client = MongoClient('mongodb://localhost:27017')
+            self.db = self.client['twitter-database']
+            self.tweets = self.db.tweets
+
+    def save_tweets(self, df):
+        data = df.to_dict(orient='records')
+        self.tweets.insert_many(data)
+        print(data)
+
+
+
+
 if __name__ == "__main__":
     #Set Pandas Options to see all Coloumns of a data frame
     pd.set_option('display.max_rows', 500)
@@ -120,30 +153,23 @@ if __name__ == "__main__":
     twitter_client = TwitterClient()
     api = twitter_client.get_twitter_client_api()
 
-    tweets = api.user_timeline(screen_name="baloise_ch", count=370)
+    persistence = Persistence()
+
+    tweets = api.user_timeline(screen_name="abockelm", count=10)
     df = tweet_analyzer.tweets_to_dataframe(tweets)
+    df['sentiment'] = np.array([tweet_analyzer.analyze_sentiment(tweet) for tweet in df['tweets']])
 
-    #Average length over al tweets
-    print(np.mean(df['len']))
+    persistence.save_tweets(df)
 
-    #Get Number of likes for the most liked tweets
-    print(np.max(df['likes']))
+    #print(df.head())
 
-    #Get the Number of Rewteets for nost retweetet
-    print(np.max(df['retweet']))
-
-    #Time Series
-    #time_likes = pd.Series(data=df['likes'].values, index=df['created'])
-    #time_likes.plot(figsize=(16,4), color='r')
-    #plt.show()
-    #Time Retweet
-    #time_likes = pd.Series(data=df['retweet'].values, index=df['created'])
-    #time_likes.plot(figsize=(16,4), color='r')
-    #plt.show()
+    #Timeow()
 
     time_likes = pd.Series(data=df['likes'].values, index=df['created'])
     time_likes.plot(figsize=(16,4), color='r', label="likes", legend = True, )
 
     time_likes = pd.Series(data=df['retweet'].values, index=df['created'])
     time_likes.plot(figsize=(16,4), color='g',label="retweets", legend = True,)
-    plt.show()
+    #plt.show()
+
+    print(df[:21])
